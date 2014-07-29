@@ -240,8 +240,9 @@ func (self *CpuList) Get() error {
 	return nil
 }
 
+//TODO implement FileSystemList
 func (self *FileSystemList) Get() error {
-	return notImplemented()
+	return nil
 }
 
 func (self *ProcList) Get() error {
