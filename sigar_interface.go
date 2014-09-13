@@ -28,6 +28,10 @@ func (cpu *Cpu) Total() uint64 {
 		cpu.Wait + cpu.Irq + cpu.SoftIrq + cpu.Stolen
 }
 
+func (cpu *Cpu) Workload() uint64 {
+	return cpu.User + cpu.Nice + cpu.Sys
+}
+
 func (cpu Cpu) Delta(other Cpu) Cpu {
 	return Cpu{
 		User:    cpu.User - other.User,
