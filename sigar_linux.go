@@ -310,6 +310,67 @@ func (self *ProcExe) Get(pid int) error {
 	return nil
 }
 
+func (self *NETIntList) Get() error {
+	capacity := len(self.List)
+	if capacity == 0 {
+		capacity = 4
+	}
+	list := make([]NETInt, 0, capacity)
+
+	err := readFile(Procd+"/net/dev", func(line string) bool {
+		if !strings.Contains(line, ":") {
+			return true
+		}
+		i := NETInt{}
+		normline := strings.Trim(line, " ")
+		parseNetStat(&i, normline)
+		list = append(list, i)
+		return true
+	})
+
+	self.List = list
+
+	return err
+}
+
+func (self *NETInt) Get(i string) error {
+	prefix := i + ":"
+	err := readFile(Procd+"/net/dev", func(line string) bool {
+		normline := strings.Trim(line, " ")
+		if strings.HasPrefix(normline, prefix) {
+			parseNetStat(self, normline)
+			return false
+		}
+		return true
+	})
+
+	return err
+}
+
+func parseNetStat(self *NETInt, line string) error {
+	kayval := strings.Split(line, ":")
+	self.Name = kayval[0]
+	fields := strings.Fields(kayval[1])
+	self.RXBytes, _ = strtoull(fields[0])
+	self.RXPackets, _ = strtoull(fields[1])
+	self.RXErrs, _ = strtoull(fields[2])
+	self.RXDrop, _ = strtoull(fields[3])
+	self.RXFifo, _ = strtoull(fields[4])
+	self.RXFrame, _ = strtoull(fields[5])
+	self.RXCompressed, _ = strtoull(fields[6])
+	self.RXMulticast, _ = strtoull(fields[7])
+	self.TXBytes, _ = strtoull(fields[8])
+	self.TXPackets, _ = strtoull(fields[9])
+	self.TXErrs, _ = strtoull(fields[10])
+	self.TXDrop, _ = strtoull(fields[11])
+	self.TXFifo, _ = strtoull(fields[12])
+	self.TXColls, _ = strtoull(fields[13])
+	self.TXCarrier, _ = strtoull(fields[14])
+	self.TXCompressed, _ = strtoull(fields[15])
+
+	return nil
+}
+
 func parseMeminfo(table map[string]*uint64) error {
 	return readFile(Procd+"/meminfo", func(line string) bool {
 		fields := strings.Split(line, ":")
@@ -359,7 +420,7 @@ func readFile(file string, handler func(string) bool) error {
 		}
 	}
 
-	return nil
+	return err
 }
 
 func strtoull(val string) (uint64, error) {
