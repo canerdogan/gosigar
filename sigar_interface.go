@@ -139,3 +139,49 @@ type ProcExe struct {
 	Cwd  string
 	Root string
 }
+
+type NETIntList struct {
+	List []NETInt
+}
+
+type NETInt struct {
+	Name         string
+	RXBytes      uint64
+	RXPackets    uint64
+	RXErrs       uint64
+	RXDrop       uint64
+	RXFifo       uint64
+	RXFrame      uint64
+	RXCompressed uint64
+	RXMulticast  uint64
+	TXBytes      uint64
+	TXPackets    uint64
+	TXErrs       uint64
+	TXDrop       uint64
+	TXFifo       uint64
+	TXColls      uint64
+	TXCarrier    uint64
+	TXCompressed uint64
+}
+
+func (i NETInt) Delta(other NETInt) NETInt {
+	return NETInt{
+		Name:         i.Name,
+		RXBytes:      i.RXBytes - other.RXBytes,
+		RXPackets:    i.RXPackets - other.RXPackets,
+		RXErrs:       i.RXErrs - other.RXErrs,
+		RXDrop:       i.RXDrop - other.RXDrop,
+		RXFifo:       i.RXFifo - other.RXFifo,
+		RXFrame:      i.RXFrame - other.RXFrame,
+		RXCompressed: i.RXCompressed - other.RXCompressed,
+		RXMulticast:  i.RXMulticast - other.RXMulticast,
+		TXBytes:      i.TXBytes - other.TXBytes,
+		TXPackets:    i.TXPackets - other.TXPackets,
+		TXErrs:       i.TXErrs - other.TXErrs,
+		TXDrop:       i.TXDrop - other.TXDrop,
+		TXFifo:       i.TXFifo - other.TXFifo,
+		TXColls:      i.TXColls - other.TXColls,
+		TXCarrier:    i.TXCarrier - other.TXCarrier,
+		TXCompressed: i.TXCompressed - other.TXCompressed,
+	}
+}
