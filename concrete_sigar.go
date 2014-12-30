@@ -67,3 +67,41 @@ func (c *ConcreteSigar) GetFileSystemUsage(path string) (FileSystemUsage, error)
 	err := f.Get(path)
 	return f, err
 }
+
+func (c *ConcreteSigar) CollectNetStats(collectionInterval time.Duration) (<-chan NETInt, chan<- struct{}) {
+	// samplesCh is buffered to 1 value to immediately return first CPU sample
+	samplesCh := make(chan NETInt, 1)
+
+	stopCh := make(chan struct{})
+
+	go func() {
+		var netUsage NETInt
+
+		// Immediately provide non-delta value.
+		// samplesCh is buffered to 1 value, so it will not block.
+		netUsage.Get()
+		samplesCh <- netUsage
+
+		ticker := time.NewTicker(collectionInterval)
+
+		for {
+			select {
+			case <-ticker.C:
+				previousNetUsage := netUsage
+
+				netUsage.Get()
+
+				select {
+				case samplesCh <- netUsage.Delta(previousNetUsage):
+				default:
+					// Include default to avoid channel blocking
+				}
+
+			case <-stopCh:
+				return
+			}
+		}
+	}()
+
+	return samplesCh, stopCh
+}

@@ -10,6 +10,7 @@ type Sigar interface {
 	GetMem() (Mem, error)
 	GetSwap() (Swap, error)
 	GetFileSystemUsage(string) (FileSystemUsage, error)
+	CollectNetStats(collectionInterval time.Duration) (<-chan NETInt, chan<- struct{})
 }
 
 type Cpu struct {
