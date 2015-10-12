@@ -316,6 +316,17 @@ func (self *ProcExe) Get(pid int) error {
 	return kern_procargs(pid, exe, nil, nil)
 }
 
+func (self *NETIntList) Get() error {
+	list := make([]NETInt, 0, 1)
+	self.List = list
+	return nil
+}
+
+func (self *NETInt) Get(i string) error {
+	self.Name = i
+	return nil
+}
+
 // wrapper around sysctl KERN_PROCARGS2
 // callbacks params are optional,
 // up to the caller as to which pieces of data they want
