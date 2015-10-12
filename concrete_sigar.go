@@ -79,7 +79,7 @@ func (c *ConcreteSigar) CollectNetStats(collectionInterval time.Duration) (<-cha
 
 		// Immediately provide non-delta value.
 		// samplesCh is buffered to 1 value, so it will not block.
-		netUsage.Get()
+		netUsage.Get("eth0")
 		samplesCh <- netUsage
 
 		ticker := time.NewTicker(collectionInterval)
@@ -89,7 +89,7 @@ func (c *ConcreteSigar) CollectNetStats(collectionInterval time.Duration) (<-cha
 			case <-ticker.C:
 				previousNetUsage := netUsage
 
-				netUsage.Get()
+				netUsage.Get("eth0")
 
 				select {
 				case samplesCh <- netUsage.Delta(previousNetUsage):

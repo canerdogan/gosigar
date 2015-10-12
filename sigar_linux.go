@@ -46,6 +46,8 @@ func (self *LoadAverage) Get() error {
 	self.One, _ = strconv.ParseFloat(fields[0], 64)
 	self.Five, _ = strconv.ParseFloat(fields[1], 64)
 	self.Fifteen, _ = strconv.ParseFloat(fields[2], 64)
+	self.Runnable, _ = strconv.ParseFloat(fields[3], 64)
+	self.TotalThreads, _ = strconv.ParseFloat(fields[4], 64)
 
 	return nil
 }
