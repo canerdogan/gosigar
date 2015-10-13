@@ -38,13 +38,13 @@ func (self *LoadAverage) Get() error {
 }
 
 func (self *Uptime) Get() error {
-	tv := syscall.Timeval{}
+	tv := syscall.Timeval32{}
 
 	if err := sysctlbyname("kern.boottime", &tv); err != nil {
 		return err
 	}
 
-	self.Length = time.Since(time.Unix(tv.Unix())).Seconds()
+	self.Length = time.Since(time.Unix(int64(tv.Sec), int64(tv.Usec)*1000)).Seconds()
 
 	return nil
 }
@@ -213,6 +213,10 @@ func (self *FileSystemList) Get() error {
 	self.List = fslist
 
 	return err
+}
+
+func (self *DiskList) Get() error {
+	return notImplemented()
 }
 
 func (self *ProcList) Get() error {
@@ -489,5 +493,10 @@ func task_info(pid int, info *C.struct_proc_taskallinfo) error {
 		return syscall.ENOMEM
 	}
 
+	return nil
+}
+
+func notImplemented() error {
+	panic("Not Implemented")
 	return nil
 }

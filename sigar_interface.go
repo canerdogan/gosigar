@@ -21,11 +21,12 @@ type Cpu struct {
 	Irq     uint64
 	SoftIrq uint64
 	Stolen  uint64
+	Guest   uint64
 }
 
 func (cpu *Cpu) Total() uint64 {
 	return cpu.User + cpu.Nice + cpu.Sys + cpu.Idle +
-		cpu.Wait + cpu.Irq + cpu.SoftIrq + cpu.Stolen
+		cpu.Wait + cpu.Irq + cpu.SoftIrq + cpu.Stolen + cpu.Guest
 }
 
 func (cpu Cpu) Delta(other Cpu) Cpu {
@@ -38,6 +39,7 @@ func (cpu Cpu) Delta(other Cpu) Cpu {
 		Irq:     cpu.Irq - other.Irq,
 		SoftIrq: cpu.SoftIrq - other.SoftIrq,
 		Stolen:  cpu.Stolen - other.Stolen,
+		Guest:  cpu.Guest - other.Guest,
 	}
 }
 
@@ -142,4 +144,30 @@ type ProcExe struct {
 	Name string
 	Cwd  string
 	Root string
+}
+
+type DiskList struct {
+	List map[string]DiskIo
+}
+
+type DiskIo struct {
+	ReadOps uint64
+	ReadBytes uint64
+	ReadTimeMs uint64
+	WriteOps uint64
+	WriteBytes uint64
+	WriteTimeMs uint64
+	IoTimeMs uint64
+}
+
+func (self DiskIo) Delta(other DiskIo) DiskIo {
+	return DiskIo {
+		ReadOps: self.ReadOps - other.ReadOps,
+		ReadBytes: self.ReadBytes - other.ReadBytes,
+		ReadTimeMs: self.ReadTimeMs - other.ReadTimeMs,
+		WriteOps: self.WriteOps - other.WriteOps,
+		WriteBytes: self.WriteBytes - other.WriteBytes,
+		WriteTimeMs: self.WriteTimeMs - other.WriteTimeMs,
+		IoTimeMs: self.IoTimeMs - other.IoTimeMs,
+	}
 }

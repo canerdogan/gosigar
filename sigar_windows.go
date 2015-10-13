@@ -8,6 +8,7 @@ import "C"
 
 import (
 	"fmt"
+	"strconv"
 	"unsafe"
 )
 
@@ -33,23 +34,153 @@ func (self *Mem) Get() error {
 	}
 
 	self.Total = uint64(statex.ullTotalPhys)
+	self.Free = uint64(statex.ullAvailPhys)
+	self.Used = self.Total - self.Free
 	return nil
 }
 
 func (self *Swap) Get() error {
-	return notImplemented()
+	swapQueries := []string{
+		`\memory\committed bytes`,
+		`\memory\commit limit`,
+	}
+
+	queryResults, err := runRawPdhQueries(swapQueries)
+	if err != nil {
+		return err
+	}
+	self.Used = uint64(queryResults[0])
+	self.Total = uint64(queryResults[1])
+	self.Free = self.Total - self.Used
+	return nil
 }
 
 func (self *Cpu) Get() error {
-	return notImplemented()
+	cpuQueries := []string{
+		`\processor(_Total)\% idle time`,
+		`\processor(_Total)\% user time`,
+		`\processor(_Total)\% privileged time`,
+		`\processor(_Total)\% interrupt time`,
+	}
+	queryResults, err := runRawPdhQueries(cpuQueries)
+	if err != nil {
+		return err
+	}
+
+	self.populateFromPdh(queryResults)
+	return nil
 }
 
 func (self *CpuList) Get() error {
-	return notImplemented()
+	cpuQueries := []string{
+		`\processor(*)\% idle time`,
+		`\processor(*)\% user time`,
+		`\processor(*)\% privileged time`,
+		`\processor(*)\% interrupt time`,
+	}
+	// Run a PDH query for all CPU metrics
+	queryResults, err := runRawPdhArrayQueries(cpuQueries)
+	if err != nil {
+		return err
+	}
+	capacity := len(self.List)
+	if capacity == 0 {
+		capacity = 4
+	}
+	self.List = make([]Cpu, capacity)
+	for cpu, counters := range queryResults {
+		index := 0
+		if cpu == "_Total" {
+			continue
+		}
+
+		index, err := strconv.Atoi(cpu)
+		if err != nil {
+			continue
+		}
+
+		// Expand the array to accomodate this CPU id
+		for i := len(self.List); i <= index; i++ {
+			self.List = append(self.List, Cpu{})
+		}
+
+		// Populate the relevant fields
+		self.List[index].populateFromPdh(counters)
+	}
+	return nil
 }
 
+func (self *Cpu) populateFromPdh(values []uint64) {
+	self.Idle = values[0]
+	self.User = values[1]
+	self.Sys = values[2]
+	self.Irq = values[3]
+}
+
+// Get a list of local filesystems
+// Does not apply to SMB volumes
 func (self *FileSystemList) Get() error {
-	return notImplemented()
+	capacity := len(self.List)
+	if capacity == 0 {
+		capacity = 4
+	}
+	self.List = make([]FileSystem, capacity)
+
+	iter, err := NewWindowsVolumeIterator()
+	if err != nil {
+		return err
+	}
+
+	for iter.Next() {
+		volume := iter.Volume()
+		self.List = append(self.List, volume)
+	}
+	iter.Close()
+
+	return iter.Error()
+}
+
+func (self *DiskList) Get() error {
+	/* Even though these queries are % disk time and ops / sec,
+	   we read the raw PDH counter values, not the "cooked" ones.
+	   This gives us the underlying number of ticks that would go into
+	   computing the cooked metric. */
+	diskQueries := []string{
+		`\physicaldisk(*)\disk reads/sec`,
+		`\physicaldisk(*)\disk read bytes/sec`,
+		`\physicaldisk(*)\% disk read time`,
+		`\physicaldisk(*)\disk writes/sec`,
+		`\physicaldisk(*)\disk write bytes/sec`,
+		`\physicaldisk(*)\% disk write time`,
+	}
+
+	// Run a PDH query for metrics across all physical disks
+	queryResults, err := runRawPdhArrayQueries(diskQueries)
+	if err != nil {
+		return err
+	}
+
+	self.List = make(map[string]DiskIo)
+	for disk, counters := range queryResults {
+		if disk == "_Total" {
+			continue
+		}
+
+		self.List[disk] = DiskIo{
+			ReadOps:   uint64(counters[0]),
+			ReadBytes: uint64(counters[1]),
+			// The raw counter for `% disk read time` is measured
+			// in 100ns ticks, divide by 10000 to get milliseconds
+			ReadTimeMs: uint64(counters[2] / 10000),
+			WriteOps:   uint64(counters[3]),
+			WriteBytes: uint64(counters[4]),
+			// The raw counter for `% disk write time` is measured
+			// in 100ns ticks, divide by 10000 to get milliseconds
+			WriteTimeMs: uint64(counters[5] / 10000),
+			IoTimeMs:    uint64((counters[5] + counters[2]) / 10000),
+		}
+	}
+	return nil
 }
 
 func (self *ProcList) Get() error {
@@ -91,6 +222,8 @@ func (self *FileSystemUsage) Get(path string) error {
 	}
 
 	self.Total = *(*uint64)(unsafe.Pointer(&totalBytes))
+	self.Avail = *(*uint64)(unsafe.Pointer(&availableBytes))
+	self.Used = self.Total - self.Avail
 	return nil
 }
 
